@@ -1,5 +1,5 @@
 import { check } from 'express-validator'
-import { Restaurant } from '../../models/models.js'
+import { Restaurant, Product } from '../../models/models.js'
 import { checkFileIsImage, checkFileMaxSize } from './FileValidationHelper.js'
 
 const maxFileSize = 2000000 // around 2Mb
@@ -14,12 +14,50 @@ const checkRestaurantExists = async (value, { req }) => {
     return Promise.reject(new Error(err))
   }
 }
+const checkNotFiveHighlightedCreate = async (value, { req }) => {
+  if (value) {
+    try {
+      const highlightedProductsSameRestaurant = await Product.count({ where: { restaurantId: req.body.restaurantId, highlighted: true } })
+      if (highlightedProductsSameRestaurant === 5) {
+        return Promise.reject(new Error('There are already 5 highlighted products'))
+      } else {
+        return Promise.resolve()
+      }
+    } catch (err) {
+      return Promise.reject(new Error(err))
+    }
+  }
+}
+
+const checkNotFiveHighlightedUpdate = async (value, { req }) => {
+  if (value) {
+    try {
+      let highlightedProductsSameRestaurant = 0
+      const productToUpdate = await Product.findByPk(req.params.productId)
+      if (req.body.restaurantId === null) {
+        highlightedProductsSameRestaurant = await Product.count({ where: { restaurantId: productToUpdate.restaurantId, highlighted: true } })
+      } else {
+        highlightedProductsSameRestaurant = await Product.count({ where: { restaurantId: req.body.restaurantId, highlighted: true } })
+      }
+      if (highlightedProductsSameRestaurant === 5) {
+        return Promise.reject(new Error('There are already 5 highlighted products'))
+      } else {
+        return Promise.resolve()
+      }
+    } catch (err) {
+      return Promise.reject(new Error(err))
+    }
+  }
+}
+
 const create = [
   check('name').exists().isString().isLength({ min: 1, max: 255 }).trim(),
   check('description').optional({ checkNull: true, checkFalsy: true }).isString().isLength({ min: 1 }).trim(),
   check('price').exists().isFloat({ min: 0 }).toFloat(),
   check('order').default(null).optional({ nullable: true }).isInt().toInt(),
   check('availability').optional().isBoolean().toBoolean(),
+  check('highlighted').exists().isBoolean().toBoolean(),
+  check('highlighted').custom(checkNotFiveHighlightedCreate),
   check('productCategoryId').exists().isInt({ min: 1 }).toInt(),
   check('restaurantId').exists().isInt({ min: 1 }).toInt(),
   check('restaurantId').custom(checkRestaurantExists),
@@ -37,6 +75,8 @@ const update = [
   check('price').exists().isFloat({ min: 0 }).toFloat(),
   check('order').default(null).optional({ nullable: true }).isInt().toInt(),
   check('availability').optional().isBoolean().toBoolean(),
+  check('highlighted').exists().isBoolean().toBoolean(),
+  check('highlighted').custom(checkNotFiveHighlightedUpdate),
   check('productCategoryId').exists().isInt({ min: 1 }).toInt(),
   check('restaurantId').not().exists(),
   check('image').custom((value, { req }) => {

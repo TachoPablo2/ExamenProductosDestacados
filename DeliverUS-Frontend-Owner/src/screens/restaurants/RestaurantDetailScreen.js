@@ -4,7 +4,7 @@ import { StyleSheet, View, FlatList, ImageBackground, Image, Pressable } from 'r
 import { showMessage } from 'react-native-flash-message'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { getDetail } from '../../api/RestaurantEndpoints'
-import { remove } from '../../api/ProductEndpoints'
+import { highlight, remove } from '../../api/ProductEndpoints'
 import ImageCard from '../../components/ImageCard'
 import TextRegular from '../../components/TextRegular'
 import TextSemiBold from '../../components/TextSemibold'
@@ -15,6 +15,7 @@ import defaultProductImage from '../../../assets/product.jpeg'
 export default function RestaurantDetailScreen ({ navigation, route }) {
   const [restaurant, setRestaurant] = useState({})
   const [productToBeDeleted, setProductToBeDeleted] = useState(null)
+  const [productToBePatched, setProductToBePatched] = useState(null)
 
   useEffect(() => {
     fetchRestaurantDetail()
@@ -65,6 +66,24 @@ export default function RestaurantDetailScreen ({ navigation, route }) {
         {!item.availability &&
           <TextRegular textStyle={styles.availability }>Not available</TextRegular>
         }
+
+        <View style={[{ flex: 1, flexDirection: 'column', alignItems: 'flex-end' }]}>
+
+          {item.highlighted &&
+          <TextRegular textStyle={styles.favorite}> Favorite ON!</TextRegular> &&
+          <MaterialCommunityIcons name='star' color={'gold'} size={20}/>
+        }
+          {!item.highlighted &&
+          <MaterialCommunityIcons name='star' color={'black'} size={20}/>
+        }
+        {!item.highlighted &&
+          <TextRegular textStyle={styles.notfavorite}>Not Favorite</TextRegular>
+          }
+        {item.highlighted &&
+          <TextRegular textStyle={styles.favorite}> Favorite ON!</TextRegular>
+          }
+        </View>
+
          <View style={styles.actionButtonsContainer}>
           <Pressable
             onPress={() => navigation.navigate('EditProductScreen', { id: item.id })
@@ -99,6 +118,27 @@ export default function RestaurantDetailScreen ({ navigation, route }) {
             <MaterialCommunityIcons name='delete' color={'white'} size={20}/>
             <TextRegular textStyle={styles.text}>
               Delete
+            </TextRegular>
+          </View>
+        </Pressable>
+
+        <Pressable
+            onPress={() => {
+              setProductToBePatched(item)
+            }
+            }
+            style={({ pressed }) => [
+              {
+                backgroundColor: pressed
+                  ? GlobalStyles.brandGreenTap
+                  : GlobalStyles.brandGreen
+              },
+              styles.actionButton
+            ]}>
+          <View style={[{ flex: 1, flexDirection: 'row', justifyContent: 'center' }]}>
+            <MaterialCommunityIcons name='exclamation' color={'white'} size={20}/>
+            <TextRegular textStyle={styles.text}>
+              Highlight(toggle)
             </TextRegular>
           </View>
         </Pressable>
@@ -152,6 +192,28 @@ export default function RestaurantDetailScreen ({ navigation, route }) {
     }
   }
 
+  const patchHighlightedProduct = async (product) => {
+    try {
+      await highlight(product.id)
+      await fetchRestaurantDetail()
+      setProductToBePatched(null)
+      showMessage({
+        message: `Product ${product.name} succesfully patched`,
+        type: 'success',
+        style: GlobalStyles.flashStyle,
+        titleStyle: GlobalStyles.flashTextStyle
+      })
+    } catch (error) {
+      console.log(error)
+      showMessage({
+        message: `Product ${product.name} could not be patched.`,
+        type: 'error',
+        style: GlobalStyles.flashStyle,
+        titleStyle: GlobalStyles.flashTextStyle
+      })
+    }
+  }
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -167,6 +229,13 @@ export default function RestaurantDetailScreen ({ navigation, route }) {
         onCancel={() => setProductToBeDeleted(null)}
         onConfirm={() => removeProduct(productToBeDeleted)}>
           <TextRegular>If the product belong to some order, it cannot be deleted.</TextRegular>
+      </DeleteModal>
+
+      <DeleteModal
+        isVisible={productToBePatched !== null}
+        onCancel={() => setProductToBePatched(null)}
+        onConfirm={() => patchHighlightedProduct(productToBePatched)}>
+          <TextRegular>If there are already 5 highlighted products, one will be not highlighted anymore.</TextRegular>
       </DeleteModal>
     </View>
   )
@@ -200,6 +269,14 @@ const styles = StyleSheet.create({
   },
   description: {
     color: 'white'
+  },
+  favorite: {
+    fontSize: 20,
+    color: 'gold'
+  },
+  notfavorite: {
+    fontSize: 20,
+    color: 'black'
   },
   textTitle: {
     fontSize: 20,
@@ -237,12 +314,13 @@ const styles = StyleSheet.create({
     padding: 10,
     alignSelf: 'center',
     flexDirection: 'column',
-    width: '50%'
+    width: '20%'
   },
   actionButtonsContainer: {
     flexDirection: 'row',
     bottom: 5,
     position: 'absolute',
-    width: '90%'
+    width: '90%',
+    alignSelf: 'center'
   }
 })

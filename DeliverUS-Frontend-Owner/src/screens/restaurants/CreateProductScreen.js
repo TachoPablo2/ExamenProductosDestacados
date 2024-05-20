@@ -35,6 +35,8 @@ export default function CreateProductScreen ({ navigation, route }) {
       .integer('Please provide an integer order value'),
     availability: yup
       .boolean(),
+    highlighted: yup
+      .boolean(),
     productCategoryId: yup
       .number()
       .positive()
@@ -148,6 +150,19 @@ export default function CreateProductScreen ({ navigation, route }) {
                 }
               />
               <ErrorMessage name={'availability'} render={msg => <TextError>{msg}</TextError> }/>
+
+              <TextRegular>Is it highlighted?</TextRegular>
+              <Switch
+                trackColor={{ false: GlobalStyles.brandSecondary, true: GlobalStyles.brandPrimary }}
+                thumbColor={values.availability ? GlobalStyles.brandSecondary : '#f4f3f4'}
+                // onValueChange={toggleSwitch}
+                value={values.highlighted}
+                style={styles.switch}
+                onValueChange={value =>
+                  setFieldValue('highlighted', value)
+                }
+              />
+              <ErrorMessage name={'highlighted'} render={msg => <TextError>{msg}</TextError> }/>
 
               <Pressable onPress={() =>
                 pickImage(
